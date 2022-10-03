@@ -197,10 +197,9 @@ cString _Instr::toAsmString() const
 Arg *_Instr::imm(OpWidth w)
 {
 	switch (w) {
-	default:
-		FATALERROR("Default case w=" + std::to_string((int)w));
 	case OPWbyte:
 		return new NumArg(low(uword()), "#");
+	default:
 	case OPWword:
 		return new NumArg(uword(), "#");
 	case OPWlong:
