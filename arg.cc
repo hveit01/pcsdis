@@ -1,6 +1,7 @@
 #include "arg.h"
 #include "instr.h"
 #include "exprfactory.h"
+#include "segment.h"
 
 Arg::Arg()
 	: astr()
@@ -220,9 +221,13 @@ void RelocArg::makeasm()
 	astr = "(";
 	const char *rname = relname();
 	if (rname) {
+		int segbase = 0;
+		Segment *seg = SegmentFactory::Instance()->SegByName(rname);
+		if (seg) segbase = seg->Base();		
 		astr += rname;
 		if (off != 0) {
-			astr += "+" + std::to_string(off);
+//			std::cout << "RelocArg: "<< segbase+off << std::endl;
+			astr += "+$" + to_hexstring(segbase+off);
 		}
 	} else {
 		astr += asHex(off, true);

@@ -319,7 +319,7 @@ Arg *_Instr::ea(uint16_t op, OpWidth isz)
 		case 001:
 			/* there may be a named reloc+offset, but maybe it is an absolute value */
 			r = seg->RelocByAddr(addr + size);
-			return new RelocArg(r, ulong()); /* make arg and consume reloc offset */
+			return new RelocArg(r, slong()); /* make arg and consume reloc offset */
 		case 004:
 			return imm(isz);
 		default:

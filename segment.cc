@@ -97,6 +97,7 @@ Symbol Segment::SymbolAt(int rel) const
 
 DByte Segment::DByteAt(int rel, bool nullok) const
 {
+//	std::cout << "DByteAt("<<Name()<<") abs="<<to_hexstring(Rel2Abs(rel))<<std::endl;
 	auto it = items.find(rel);
 	if (it == items.end()) {
 		if (nullok) return 0;
@@ -146,13 +147,25 @@ ItemLong Segment::LongAt(int rel) const
 Symbol Segment::MakeLocal(int rel)
 {
 //	std::cout << "MakeLocal(" << Name() << "): rel=" << rel << std::endl;
-	DByte b = DByteAt(rel);
-	Symbol sym = b->Sym();
-	if (!sym) {
-		SymbolTable *st = SymbolTable::Instance();
-		sym = st->AddLocal(this, Rel2Abs(rel));
-		b->SetSym(sym);
-		Diag::Info(DIAGsegment, "Makelocal new=" + sym->Name());
+	Symbol sym = 0;
+	DByte b = DByteAt(rel, true);
+	if (b) {
+		sym = b->Sym();
+		if (!sym) {
+			SymbolTable *st = SymbolTable::Instance();
+			sym = st->AddLocal(this, Rel2Abs(rel));
+			b->SetSym(sym);
+			Diag::Info(DIAGsegment, "Makelocal new=" + sym->Name());
+		}
+	} else {
+		/* strange offset outside segment. This happens for 
+		 * relocations for data arrays with an "index-N"
+		 * Unfortunately, the element size is not known here,
+		 * so we can't calculate to which array this really points
+		 * The instruction then points to .data+off (it should be .data-off)
+		 */
+		Diag::Info(DIAGsegment, "Makelocal ignored for negative index " + std::to_string(rel));
+		
 	}
 //    else
 //		Diag::Info(DIAGsegment, "Makelocal is=" + sym->Name());
@@ -228,10 +241,12 @@ bool Segment::DisassPhase1()
 			Diag::Info(DIAGsegment, "trel=" + to_hexstring(trel));
 			
 			Symbol sym = tgt->MakeLocal(trel); /* create a local symbol in tgt sec */
-			r->SetTarget(sym, trel);
-			if (Diag::IsDiag(DIAGsegment)) r->Dump(DIAGstream);
-			clearat(rel, sz); /* destroy offset */
-			tgt->Enqueue(trel, "Reloc");
+			if (sym) {
+				r->SetTarget(sym, trel);
+				if (Diag::IsDiag(DIAGsegment)) r->Dump(DIAGstream);
+				clearat(rel, sz); /* destroy offset */
+				tgt->Enqueue(trel, "Reloc");
+			}
 		}
 	}
 	return true;
