@@ -13,14 +13,18 @@ _DataInstr::_DataInstr(int addr, int sz)
 	: _Instr(addr), typ(ITYPEunknown)
 {
 	switch (sz) {
+	case 1:
 	case 2:
 		makeword(); break;
 	case 4:
 		makelong(); break;
 	case -4:
 		makereloc(seg->DByteAt(addr)); break;
-	default:
-		FATALERROR("Default case sz=" + std::to_string(sz));
+	default: {
+			DByte b = seg->DByteAt(addr);
+			if (!makereloc(b) && !makeascii(b) && !makeword())
+				FATALERROR("Unrecognized DataInstr at " + to_hexstring(addr));
+		}
 	}
 }
 
@@ -30,6 +34,7 @@ cString _DataInstr::toAsmString() const
 	if (arg1) {
 		astr += "\t";
 		astr += arg1->toAsmString();
+//		astr += "\t; addr=$" + to_hexstring(addr);
 	}
 	return astr;
 }
@@ -62,7 +67,7 @@ bool _DataInstr::makereloc(DByte b)
 	arg1 = new RelocArg(r, off);
 	if (off >= 0 && off < seg->Size())
 		seg->Enqueue(off, "DataInstr::makereloc");
-	SetEnd();
+//	SetEnd();
 	if (!seg->IsText()) endbb = false;
 	typ = ITYPEpvar;
 	size = 4;
@@ -85,11 +90,12 @@ bool _DataInstr::makeascii(DByte b)
 		buf==p) 	// no chars read
 		return false;
 	*p++ = 0;
+	size++;
 
 	opstr = "dc" + LField(OPWbyte);
 
 	arg1 = new StringArg(buf);
-	SetEnd();
+//	SetEnd();
 //	endbb = false;
 	typ = ITYPEcvar;
 	return true;
@@ -97,10 +103,16 @@ bool _DataInstr::makeascii(DByte b)
 
 bool _DataInstr::makeword()
 {
+	ItemWord iw;
+	cString field;	
+	if (seg->SymbolAt(addr+1)) {
+		iw = seg->ByteAt(addr);
+		size = 1;
+	} else {
+		iw = seg->WordAt(addr);
+		size = 2;
+	}
 	opstr = "dc" + LField(OPWword);
-
-	ItemWord iw = seg->WordAt(addr);
-	size = 2;
 	arg1 = new NumArg(iw->Value());
 	typ = ITYPEivar;
 //	endbb = false;

@@ -91,15 +91,18 @@ int Segment::OpcodeAt(int rel) const
 
 Symbol Segment::SymbolAt(int rel) const
 {
-	return DByteAt(rel)->Sym();
+	DByte b = DByteAt(rel, true);	
+	return b ? b->Sym() : 0;
 }
 
-DByte Segment::DByteAt(int rel) const
+DByte Segment::DByteAt(int rel, bool nullok) const
 {
 	auto it = items.find(rel);
-	if (it == items.end())
-		FATALERROR(name + ": No DByte at " + std::to_string(rel));
-
+	if (it == items.end()) {
+		if (nullok) return 0;
+		else
+			FATALERROR(name + ": No DByte at abs=" + to_hexstring(Rel2Abs(rel)));
+	}
 	return std::dynamic_pointer_cast<_DByte>(it->second);
 }
 
@@ -107,6 +110,12 @@ int Segment::byteat(int rel) const
 {
 	DByte b1 = DByteAt(rel);
 	return b1->Value() & 0xff;
+}
+
+ItemWord Segment::ByteAt(int rel) const
+{
+	int b1 = byteat(rel);
+	return std::make_shared<_ItemWord>(rel, b1);
 }
 
 ItemWord Segment::WordAt(int rel) const
@@ -258,8 +267,10 @@ int Segment::dequeue(cString& where)
 
 void Segment::WriteAsm(std::ostream& os) const
 {
-		for (auto i : instrs)
-			i.second->WriteAsm(os);
+
+	os << "\n\n\t\t" << Name() << std::endl;
+	for (auto i : instrs)
+		i.second->WriteAsm(os);
 }
 
 CProc Segment::addproc(Symbol s)
@@ -267,6 +278,33 @@ CProc Segment::addproc(Symbol s)
 	CProc p = _CProc::MakeProc(s);
 	procs.push_back(p);
 	return p;
+}
+
+bool Segment::Decompile()
+{
+	return true;
+}
+
+void Segment::phase2(int rel) 
+{
+	Instr inst;
+	Diag::Trace(DIAGsegment, "Phase2 " + Name() + " rel=" + to_hexstring(rel));
+	do {
+		DByte b = DByteAt(rel, true);
+		if (b==0) break;
+//		DIAGstream << "*** Follow: 0x" << std::hex << rel << std::endl;
+		if (b->IsFlag(DB_IHEAD))
+			return;
+		if (b->IsFlag(DB_ISUCC)) {
+			Diag::Info(DIAGsegment, "Into instr rel=" + to_hexstring(rel));
+			return;
+		}
+		inst = InstrFactory::Instance().MakeData(this, rel);
+		Diag::Info(DIAGsegment, "At " + to_hexstring(rel) +
+			" inst=" + inst->toAsmString());
+		rel += inst->Size();
+	} while (rel < segsize);
+	Diag::Trace(DIAGsegment, "End of phase2 rel=" + to_hexstring(rel));
 }
 
 /**********************************************************************/
@@ -330,8 +368,8 @@ void DataSegment::phase2(int rel)
 	Instr inst;
 	Diag::Trace(DIAGsegment, "Phase2 data rel=" + to_hexstring(rel));
 	do {
-		DByte b = DByteAt(rel);
-//		DIAGstream << "*** Follow: 0x" << std::hex << rel << std::endl;
+		DByte b = DByteAt(rel, true);
+		if (!b) break;
 		if (b->IsFlag(DB_IHEAD))
 			return;
 		if (b->IsFlag(DB_ISUCC)) {
@@ -341,9 +379,10 @@ void DataSegment::phase2(int rel)
 		inst = InstrFactory::Instance().MakeData(this, rel);
 		Diag::Info(DIAGsegment, "At " + to_hexstring(rel) +
 			" inst=" + inst->toAsmString());
+		rel += inst->Size();
 		
-		rel += inst->Size();		
-	} while (!inst->IsEnd());
+		if (SymbolAt(rel)) break;
+	} while (rel < segsize && !inst->IsEnd());
 	Diag::Trace(DIAGsegment, "End of phase2 rel=" + to_hexstring(rel));
 }
 
@@ -416,9 +455,9 @@ Segment *SegmentFactory::MakeSegment(cString& nam, int base, int size)
 	else if (nam == ".bss")
 		seg = segs[2] = new BSSSegment(nam, base, size);
 	else {
-//		segs.push_back(seg = new Segment(nam, base, size));
-		FATALERROR("Not yet handled");
-		/* generic segment - not correctly handled yet */
+//		std::cerr << "Warning: generic segment "<< nam << std::endl;
+		segs.push_back(seg = new Segment(nam, base, size));
+		seg->Enqueue(0);
 	}
 	return seg;
 }

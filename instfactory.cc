@@ -378,10 +378,10 @@ Instr InstrFactory::MakeCaseTgt(Segment *seg, int rel)
 }
 
 
-Instr InstrFactory::MakeData(Segment *seg, int rel)
+Instr InstrFactory::MakeData(Segment *seg, int rel, int sz)
 {
 	_Instr::SetFocus(seg);
-	Instr ip = std::make_shared<_DataInstr>(rel);
+	Instr ip = std::make_shared<_DataInstr>(rel, sz);
 	return seg->AddInstr(ip);
 }
 

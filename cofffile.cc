@@ -248,7 +248,7 @@ bool COFFFile::readsegment()
 /*	if (hdr.s_nlnno != 0)
 		FATALERROR("Not yet: s_nlnno!=0");*/
 	if (hdr.s_paddr != hdr.s_vaddr)
-		FATALERROR("Not yet: s_paddr!=s_vaddr");
+		FATALERROR("Not yet: s_paddr != s_vaddr");
 	
 	dumpheader(DIAGstream, hdr);
 
@@ -269,11 +269,12 @@ bool COFFFile::readsegment()
 bool COFFFile::readdata(Segment *seg, int pos, int sz)
 {
 	if (pos == 0 && sz > 0) return true;	// don't read .BSS from file
+	Diag::Trace(DIAGfileread, "readdata");
 	
 	std::streampos oldpos = is->tellg();
 	is->seekg(pos, is->beg);
 
-	for (int addr = 0; addr < sz; addr++) {
+	for (int addr = 0; addr <= sz; addr++) {
 		int byte = is->get();
 		check_stream("COFFFile::readdata(1)");
 		auto sdbyte = std::make_shared<_DByte>(addr, byte);

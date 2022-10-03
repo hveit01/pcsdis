@@ -648,7 +648,7 @@ public:
 	Instr MakeInst(Segment *seg, int addr);	// instruction
 	Instr MakeCaseVal(Segment *seg, int addr, int csz);	// case const
 	Instr MakeCaseTgt(Segment *seg, int addr);	// case target
-	Instr MakeData(Segment *seg, int addr);	// data item
+	Instr MakeData(Segment *seg, int addr, int sz=-1);	// data item
 	Instr MakeBss(Segment *seg, int addr, int bsslen);	// BSS item
 };
 

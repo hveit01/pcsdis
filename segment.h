@@ -19,7 +19,7 @@ protected:
 	CProcVector procs;
 	int segsize;
 	
-	virtual void phase2(int addr) {}
+	virtual void phase2(int addr);
 	int dequeue(cString& where="");
 	void clearat(int abs, int sz);
 
@@ -50,13 +50,14 @@ public:
 	void AddByte(DByte b) { items[b->Addr()] = b; }
 	void MakeGlobal(Symbol sym);
 
-	DByte DByteAt(int rel) const; // get byte at rel
+	DByte DByteAt(int rel, bool nullok=false) const; // get byte at rel
 	Instr InstrAt(int rel) const; // locate instr at rel
 	Instr PrevInstrAt(int rel) const; // locate instr before rel
 	Instr AddInstr(Instr inst);  // add an instruction to segment
 
 	int OpcodeAt(int rel) const;
 	Symbol SymbolAt(int rel) const;
+	ItemWord ByteAt(int rel) const;
 	ItemWord WordAt(int rel) const;
 	ItemWord SWordAt(int rel) const;
 	ItemLong LongAt(int rel) const;
@@ -68,7 +69,7 @@ public:
 	
 	bool DisassPhase1();
 	bool DisassPhase2();
-	virtual bool Decompile() { return true; }
+	virtual bool Decompile();
 	
 	void DumpRelocs(std::ostream& os) const;
 	void WriteAsm(std::ostream& os) const;
@@ -134,6 +135,7 @@ public:
 	Segment *Text() const { return segs[0]; }
 	Segment *Data() const { return segs[1]; }
 	Segment *Bss() const { return segs[2]; }
+	int SegCnt() const { return segs.size(); }
 	Segment *SegByName(cString& name) const;
 	
 	bool Disassemble();
